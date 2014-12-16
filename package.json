@@ -2,6 +2,10 @@
   "name": "kinda-config",
   "version": "0.1.0",
   "description": "...",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kinda/kinda-config"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
