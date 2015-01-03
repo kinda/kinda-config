@@ -53,7 +53,7 @@ var get = function(path, defaultConfig) {
   var config = create();
   if (path) {
     path.split('.').forEach(function(key) {
-      config = config[key];
+      config = config[key] || {};
     });
   }
   if (defaultConfig) {
