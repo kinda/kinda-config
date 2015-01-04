@@ -2,22 +2,23 @@
 
 var _ = require('lodash');
 
-var generate = function(target) {
+var generate = function(role) {
   if (process.browser) return require('browserified-config');
-
-  if (!global.__kindaConfigCache__) global.__kindaConfigCache__ = {};
-
-  if (global.__kindaConfigCache__[target]) {
-    return global.__kindaConfigCache__[target];
-  }
 
   var fs = require('fs' + '');
   var nodePath = require('path' + '');
   var argv = require('minimist' + '')(process.argv.slice(2));
 
+  if (!role) role = argv.role;
+
+  if (!global.__kindaConfigCache__) global.__kindaConfigCache__ = {};
+  if (global.__kindaConfigCache__[role]) {
+    return global.__kindaConfigCache__[role];
+  }
+
   var env = argv.env || process.env.NODE_ENV || 'development';
 
-  var config = { env: env, target: target };
+  var config = { env: env, role: role };
 
   var paths = [];
   var dirname = nodePath.dirname(require.main.filename);
@@ -37,13 +38,13 @@ var generate = function(target) {
 
   // merge(config, argv);
 
-  global.__kindaConfigCache__[target] = config;
+  global.__kindaConfigCache__[role] = config;
 
   return config;
 };
 
 var create = function(localConfig) {
-  var config = generate('server');
+  var config = generate();
   if (localConfig) {
     config = _.cloneDeep(config);
     localConfig = parse(config, localConfig);
@@ -52,8 +53,8 @@ var create = function(localConfig) {
   return config;
 };
 
-var createForBrowser = function() {
-  return generate('browser');
+var createForRole = function(role) {
+  return generate(role);
 };
 
 var get = function(path, defaultConfig) {
@@ -148,8 +149,8 @@ var parseObject = function(config, input) {
         if ((config.env === condition) === expected) {
           result = true;
         }
-      } else if (condition === 'browser' || condition === 'server') {
-        if ((config.target === condition) === expected) {
+      } else if (condition === 'client' || condition === 'server') {
+        if ((config.role === condition) === expected) {
           result = true;
         }
       } else throw new Error('invalid condition (' + condition + ')');
@@ -181,7 +182,7 @@ var merge = function(object, source) {
 
 var KindaConfig = {
   create: create,
-  createForBrowser: createForBrowser,
+  createForRole: createForRole,
   get: get
 }
 
