@@ -2,22 +2,22 @@
 
 var _ = require('lodash');
 
-var globalConfig, env;
+var generate = function(target) {
+  if (process.browser) return require('browserified-config');
 
-var init = function() {
-  if (process.browser) {
-    globalConfig = require('browserified-config');
-    env = globalConfig.env;
-    return;
+  if (!global.__kindaConfigCache__) global.__kindaConfigCache__ = {};
+
+  if (global.__kindaConfigCache__[target]) {
+    return global.__kindaConfigCache__[target];
   }
-
-  globalConfig = {};
 
   var fs = require('fs' + '');
   var nodePath = require('path' + '');
   var argv = require('minimist' + '')(process.argv.slice(2));
 
-  globalConfig.env = env = argv.env || process.env.NODE_ENV || 'development';
+  var env = argv.env || process.env.NODE_ENV || 'development';
+
+  var config = { env: env, target: target };
 
   var paths = [];
   var dirname = nodePath.dirname(require.main.filename);
@@ -31,22 +31,29 @@ var init = function() {
 
   paths.forEach(function(path) {
     var input = require(path);
-    input = parse(input);
-    merge(globalConfig, input);
+    input = parse(config, input);
+    merge(config, input);
   });
 
-  merge(globalConfig, argv);
+  // merge(config, argv);
+
+  global.__kindaConfigCache__[target] = config;
+
+  return config;
 };
 
 var create = function(localConfig) {
-  init();
-  var config = globalConfig;
+  var config = generate('server');
   if (localConfig) {
     config = _.cloneDeep(config);
-    localConfig = parse(localConfig);
+    localConfig = parse(config, localConfig);
     merge(config, localConfig);
   }
   return config;
+};
+
+var createForBrowser = function() {
+  return generate('browser');
 };
 
 var get = function(path, defaultConfig) {
@@ -57,49 +64,34 @@ var get = function(path, defaultConfig) {
     });
   }
   if (defaultConfig) {
-    var newConfig = parse(defaultConfig);
+    var newConfig = parse(config, defaultConfig);
     merge(newConfig, config);
     config = newConfig;
   }
   return config;
 };
 
-var parse = function(input) {
+var parse = function(config, input) {
   var output;
   if (input == null)
     throw new Error('null or undefined value found in a config file');
   if (_.isString(input)) {
-    output = parseString(input);
+    output = parseString(config, input);
   } else if (_.isBoolean(input) || _.isDate(input) ||
     _.isNumber(input) || _.isRegExp(input)) {
     output = input;
   } else if (_.isFunction(input)) {
-    output = input(globalConfig);
+    output = input(config);
   } else if (_.isArray(input)) {
-    output = [];
-    input.forEach(function(value) {
-      value = parse(value);
-      output.push(value);
-    });
+    output = parseArray(config, input);
   } else if (_.isObject(input)) {
-    output = {};
-    _.forOwn(input, function(value, key) {
-      if (key.substr(0, 1) === '$') {
-        if (key === '$' + env) { // same env
-          value = parse(value);
-          merge(output, value);
-        }
-      } else { // the key doesn't start with '$'
-        value = parse(value);
-        output[key] = value;
-      }
-    });
+    output = parseObject(config, input);
   } else
     throw new Error('unexpected type found in a config file');
   return output;
 };
 
-var parseString = function(input) {
+var parseString = function(config, input) {
   var output = '';
   var index;
   while (input) {
@@ -116,7 +108,7 @@ var parseString = function(input) {
       throw new Error("closing '}}' is missing");
     var expr = input.slice(0, index);
     input = input.slice(index + 2);
-    var value = parseExpression(expr);
+    var value = parseExpression(config, expr);
     if (_.isString(value)) {
       output += value;
     } else { // parseExpression returned an object
@@ -128,12 +120,57 @@ var parseString = function(input) {
   return output;
 };
 
-var parseExpression = function(expr) {
-  var config = globalConfig;
-  expr.split('.').forEach(function(key) {
-    config = config[key];
+var parseArray = function(config, input) {
+  var output = [];
+  input.forEach(function(value) {
+    value = parse(config, value);
+    output.push(value);
   });
-  return config;
+  return output;
+};
+
+var parseObject = function(config, input) {
+  var output = {};
+  _.forOwn(input, function(value, key) {
+    var expected = true;
+    if (key.substr(0, 1) === '!') {
+      key = key.substr(1);
+      expected = false;
+    }
+    if (key.substr(0, 1) === '$') {
+      var result = false;
+      var condition = key.substr(1);
+      if (
+        condition === 'development' ||
+        condition === 'test' ||
+        condition === 'production'
+      ) {
+        if ((config.env === condition) === expected) {
+          result = true;
+        }
+      } else if (condition === 'browser' || condition === 'server') {
+        if ((config.target === condition) === expected) {
+          result = true;
+        }
+      } else throw new Error('invalid condition (' + condition + ')');
+      if (result) {
+        value = parse(config, value);
+        merge(output, value);
+      }
+    } else { // the key doesn't start with '$'
+      value = parse(config, value);
+      output[key] = value;
+    }
+  });
+  return output;
+};
+
+var parseExpression = function(config, expr) {
+  var result = config;
+  expr.split('.').forEach(function(key) {
+    result = result[key];
+  });
+  return result;
 };
 
 var merge = function(object, source) {
@@ -144,6 +181,7 @@ var merge = function(object, source) {
 
 var KindaConfig = {
   create: create,
+  createForBrowser: createForBrowser,
   get: get
 }
 
