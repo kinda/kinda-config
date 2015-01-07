@@ -3,7 +3,7 @@
 var _ = require('lodash');
 
 var generate = function(role) {
-  if (process.browser) return require('browserified-config');
+  if (process.browser) return require('browserified-config' + '');
 
   var fs = require('fs' + '');
   var nodePath = require('path' + '');
