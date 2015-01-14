@@ -3,7 +3,21 @@
 var _ = require('lodash');
 
 var generate = function(role) {
-  if (process.browser) return require('browserified-config' + '');
+  var config;
+
+  if (process.browser) {
+    if (window.__kindaConfigCache__) {
+      return window.__kindaConfigCache__;
+    }
+    try {
+      config = require('browserified-config' + '');
+    } catch(err) {
+      console.info('config not found');
+      config = {};
+    }
+    window.__kindaConfigCache__ = config;
+    return config;
+  }
 
   var fs = require('fs' + '');
   var nodePath = require('path' + '');
@@ -18,7 +32,7 @@ var generate = function(role) {
 
   var env = argv.env || process.env.NODE_ENV || 'development';
 
-  var config = { env: env, role: role };
+  config = { env: env, role: role };
 
   var paths = [];
   var dirname = nodePath.dirname(require.main.filename);
