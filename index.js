@@ -12,7 +12,7 @@ var generate = function(role) {
     try {
       config = require('browserified-config' + '');
     } catch(err) {
-      console.info('config not found');
+      // console.info('config not found');
       config = {};
     }
     window.__kindaConfigCache__ = config;
