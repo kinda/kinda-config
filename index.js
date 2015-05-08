@@ -126,11 +126,11 @@ var parseString = function(config, input) {
     var expr = input.slice(0, index);
     input = input.slice(index + 2);
     var value = parseExpression(config, expr);
-    if (_.isString(value)) {
+    if (_.isNumber(value) || _.isString(value)) {
       output += value;
     } else { // parseExpression returned an object
       if (input || output)
-        throw new Error('cannot concatenate a string and a non string object');
+        throw new Error('cannot concatenate a string with an object');
       output = value;
     }
   }
