@@ -74,9 +74,11 @@ var createForRole = function(role) {
 var get = function(path, defaultConfig) {
   var config = create();
   if (path) {
+    var env = config.env;
     path.split('.').forEach(function(key) {
       config = config[key] || {};
     });
+    config.env = env;
   }
   if (defaultConfig) {
     var newConfig = parse(config, defaultConfig);
