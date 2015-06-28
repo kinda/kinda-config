@@ -1,5 +1,3 @@
-# kinda-config [![Build Status](https://travis-ci.org/kinda/kinda-config.svg?branch=master)](https://travis-ci.org/kinda/kinda-config)
+# kinda-config
 
-```js
-// TODO: documentation!
-```
+This project is deprecated.
